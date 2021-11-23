@@ -77,3 +77,11 @@ docker_3push:
 
 docker_4deploy:
 	gcloud run deploy --image eu.gcr.io/$(GCLOUD_PROJECT_ID)/$(DOCKER_IMAGE_NAME) --platform managed --region europe-west1
+
+
+# -----------------------------------
+#            EXTRA STUFF
+# -----------------------------------
+
+run_locally:
+	uvicorn api.api:app --reload
