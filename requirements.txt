@@ -27,3 +27,10 @@ six>=1.14
 joblib
 memoized-property
 termcolor
+
+#api
+fastapi
+uvicorn
+
+#finance
+yahoo_fin
