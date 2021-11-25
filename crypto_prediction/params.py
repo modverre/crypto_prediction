@@ -1,4 +1,6 @@
 # translate table for coins in their respective name
+# -- NOT used yet
+# -- NOT working as well, maybe use yaml
 
 COIN_TRANSLATION_TABLE = {
     'doge' : {
@@ -16,6 +18,4 @@ COIN_TRANSLATION_TABLE = {
         'coingecko': 'samoyecdoin',
         'display': 'Samoyed'
     }
-
-
 }

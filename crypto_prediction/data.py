@@ -3,7 +3,10 @@ import datetime as datetime
 from pycoingecko import CoinGeckoAPI
 from time import sleep
 from pytrends.request import TrendReq
-#from pytrends import dailydata
+
+# if you try to fetch less than them: dont
+MIN_COIN_HISTORY_DATAPOINTS = 200
+
 
 # should go to utils later
 def date2utc_ts(date):
@@ -71,7 +74,6 @@ def coinlist_financial_history(gecko_ids, start_date, end_date, interval='1d'):
         {gecko_id: dataframe,
          gecko_id: dataframe, ..}
     """
-    MIN_HISTORY_DATAPOINTS = 200
 
     coins_dict = {}
     for gecko_id in gecko_ids:
@@ -83,9 +85,9 @@ def coinlist_financial_history(gecko_ids, start_date, end_date, interval='1d'):
         if not isinstance(coin_data, pd.DataFrame):
             return f'error: "{coin_data}"'
         else:
-            if coin_data.shape[0] < MIN_HISTORY_DATAPOINTS:
+            if coin_data.shape[0] < MIN_COIN_HISTORY_DATAPOINTS:
                 # leave it out of the dict
-                print(f'coin {gecko_id} only has {coin_data.shape[0]} datapoints instead of {MIN_HISTORY_DATAPOINTS} and will be excluded.')
+                print(f'coin {gecko_id} only has {coin_data.shape[0]} datapoints instead of {MIN_COIN_HISTORY_DATAPOINTS} and will be excluded.')
             else:
                 # put it in the dict
                 coins_dict[gecko_id] = coin_data
@@ -154,9 +156,11 @@ def googletrend_history(namelist, start_date, end_date, interval = '1d'):
     return df
 
 if __name__ == "__main__":
-    #df = coinlist_financial_history(['samoyedcoin', 'dogecoin', 'shiba-inu'], '2020-11-24T00:00:00Z', '2021-11-24T00:00:00Z')
-    #print(df)
+    pass
+    # quick tests:
+    df = coinlist_financial_history(['samoyedcoin', 'dogecoin'], '2020-11-24T00:00:00Z', '2021-11-24T00:00:00Z')
+    print(df)
     #print(len(df))
 
-    df = googletrend_history(['dogecoin'], '2020-11-24T00:00:00Z', '2021-11-24T00:00:00Z')
-    print(df)
+    #df = googletrend_history(['dogecoin'], '2020-11-24T00:00:00Z', '2021-11-24T00:00:00Z')
+    #print(df)
