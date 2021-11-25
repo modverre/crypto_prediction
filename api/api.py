@@ -3,6 +3,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from yahoo_fin.stock_info import get_data
 import pandas as pd
 
+from crypto_prediction.gcp import download_model
+
 #from datetime import datetime
 #import pytz
 #import pandas as pd
@@ -48,6 +50,18 @@ def get_coin_history(coin, start_date, end_date, interval='1d'):
     df_json = df.to_json()
 
     return(df_json)
+
+@app.get("/predict")
+def get_prediction(price_hist, google_trends):
+
+    array = # implement function to transform inputs into shape that LSTM Model can make a prediction on
+
+    model = download_model()
+
+    prediction = model.predict(array)
+
+    return prediction
+
 
 
 if __name__ == '__main__':
