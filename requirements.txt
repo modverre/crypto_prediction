@@ -31,3 +31,4 @@ google
 six>=1.14
 memoized-property
 termcolor
+joblib
