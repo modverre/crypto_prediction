@@ -88,7 +88,7 @@ def compile_model(X_train, history_size= 2):
     model = Sequential()
 
     # first network layer
-    model.add(LSTM(units = 50, return_sequences= True, input_shape = (history_size, 2)))
+    model.add(LSTM(units = 100, return_sequences= True, input_shape = (history_size, 2)))
     model.add(Dropout(0.2))
 
     # network layer's 2 - 5
@@ -108,14 +108,14 @@ def compile_model(X_train, history_size= 2):
 def train_model(model, X_train, y_train):
     '''function that trains the model'''
 
-    #es = EarlyStopping(patience = 20, restore_best_weights= True)
+    es = EarlyStopping(patience = 100, restore_best_weights= True)
 
     model.fit(X_train,
             y_train,
             validation_split= 0.2,
             epochs = 1000,
             batch_size= 32,
-            #callbacks= [es],
+            callbacks= [es],
             verbose= 1)
 
     return model
@@ -128,7 +128,7 @@ def evaluate_model(model, scaler, X_test, y_test):
     predicted_stock_price = inverse_transformer(model.predict(X_test), scaler)
 
     # inverse log transforming the date
-    l_stock_price = np.exp(real_stock_price)
+    real_stock_price = np.exp(real_stock_price)
     predicted_stock_price = np.exp(predicted_stock_price)
 
     # evaluating model performance
@@ -176,29 +176,6 @@ def save_model(model):
     print(f"uploaded model.joblib to gcp cloud storage under \n => {STORAGE_LOCATION}")
 
 
-# def make_keras_picklable():
-#     def __getstate__(self):
-#         model_str = ""
-#         with tempfile.NamedTemporaryFile(suffix='.hdf5', delete=True) as fd:
-#             save_model(self, fd.name, overwrite=False)
-#             model_str = fd.read()
-#         d = {'model_str': model_str}
-#         return d
-
-#     def __setstate__(self, state):
-#         with tempfile.NamedTemporaryFile(suffix='.hdf5', delete=True) as fd:
-#             fd.write(state['model_str'])
-#             fd.flush()
-#             model = load_model(fd.name)
-#         self.__dict__ = model.__dict__
-
-
-
-#     cls = Model
-#     cls.__getstate__ = __getstate__
-#     cls.__setstate__ = __setstate__
-
-
 if __name__ == '__main__':
 
     df = get_data()
@@ -218,5 +195,5 @@ if __name__ == '__main__':
     evaluate_model(model, scaler, X_test, y_test)
     print("\nmodel training and evaluation complete")
 
-    save_model(model)
-    print("\nmodel uploaded to GCP")
+    #save_model(model)
+    #print("\nmodel uploaded to GCP")

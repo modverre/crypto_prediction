@@ -50,7 +50,7 @@ def get_coin_history(coin, start_date, end_date, interval='1d'):
     return('not active')
 
 @app.get("/predict")
-def get_prediction(price_hist, google_trends):
+def get_prediction(coin_name):
 
     array = [] # implement function to transform inputs into shape that LSTM Model can make a prediction on
 
