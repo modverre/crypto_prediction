@@ -26,6 +26,7 @@ pytrends
 fastapi
 uvicorn
 google
+pycoingecko
 
 # utilities
 six>=1.14
