@@ -58,12 +58,13 @@ def one_coin_financial_history(gecko_id, vs_currency, start_date, end_date, inte
 
 
 
-def coinlist_financial_history(gecko_ids, start_date, end_date, interval='1d'):
+def coinlist_financial_history(gecko_ids, start_date, end_date):
     """
     input:
         gecko_ids       - list of ids as found in coingecko
         start_date      - 2021-12-30T13:12:00Z (utc format)
         end_date        - 2021-12-30T13:12:00Z (utc format)
+                          if its more than 90 days from the time of the query(!) data will be daily
         interval='1d'   - unused for coingecko:
                             Data granularity is automatic (cannot be adjusted)
                             1 day from query time = 5 minute interval data
@@ -100,7 +101,7 @@ def coinlist_financial_history(gecko_ids, start_date, end_date, interval='1d'):
     return coins_dict
 
 
-def googletrend_history(namelist, start_date, end_date, interval = '1d'):
+def googletrend_history(namelist, start_date, end_date, interval = '1h'):
     """
     gehts the trend-data, daily or hourly
     input:
@@ -221,6 +222,13 @@ def hourly_coin_static_csv(gecko_id, start_date, end_date, write=False):
         fn = f'{gecko_id}_history_1h_{start_date}---{end_date}.csv'
         print('save csv as ',fn)
         df.to_csv(fn)
+
+
+def coingecko_ids(part_of_the_name):
+    #later or manually
+    pass
+
+
 
 if __name__ == "__main__":
     # ------------------- just for quick csv-saves -------------------
