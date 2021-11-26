@@ -27,10 +27,7 @@ fastapi
 uvicorn
 google
 
-
 # utilities
 six>=1.14
 memoized-property
 termcolor
-tempfile
-pickle
