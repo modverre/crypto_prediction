@@ -1,10 +1,9 @@
-#from google.cloud import storage
-
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
+import joblib
 
-from tensorflow.keras.models import Sequential
+from tensorflow.keras.models import Sequential, load_model, save_model, Model, model_from_json
 from tensorflow.keras.layers import Dense, LSTM, Dropout
 from tensorflow.keras.callbacks import EarlyStopping
 
@@ -13,6 +12,17 @@ from sklearn.model_selection import GridSearchCV, RandomizedSearchCV
 from sklearn.metrics import mean_squared_error
 
 from utils import get_X_y, inverse_transformer
+from google.cloud import storage
+
+BUCKET_NAME = 'crypto_prediction'
+
+#BUCKET_TRAIN_DATA_PATH = 'data/train_1k.csv'
+
+MODEL_NAME = 'crypto_prediction'
+
+MODEL_VERSION = 'v1'
+
+STORAGE_LOCATION = 'models/'
 
 
 def get_data():
@@ -52,11 +62,12 @@ def preprocess(df):
     dataset = df.values
 
     # scaling the data
-    dataset_scaled = scaler.fit_transform(dataset)
+    vectorizer = scaler.fit(dataset)
+    dataset_scaled = vectorizer.transform(dataset)
 
     # splitting into train and test data
     split = int(dataset.shape[0]*0.8)
-    train, test = dataset[:split], dataset[split:]
+    train, test = dataset_scaled[:split], dataset_scaled[split:]
 
     # selecting nr. of days used to predict next value
     history_size = 2
@@ -70,6 +81,9 @@ def preprocess(df):
     X_train = X_train.reshape((X_train.shape[0], X_train.shape[1],2))
     X_test = X_test.reshape((X_test.shape[0], X_test.shape[1],2))
 
+    joblib.dump(vectorizer, open('scaler.joblib', 'wb'))
+    print("scaler saved")
+
     return X_train, X_test, y_train, y_test, scaler
 
 def compile_model(X_train, history_size= 2):
@@ -79,7 +93,7 @@ def compile_model(X_train, history_size= 2):
     model = Sequential()
 
     # first network layer
-    model.add(LSTM(units = 50, return_sequences= True, input_shape = (history_size, 2)))
+    model.add(LSTM(units = 100, return_sequences= True, input_shape = (history_size, 2)))
     model.add(Dropout(0.2))
 
     # network layer's 2 - 5
@@ -99,17 +113,16 @@ def compile_model(X_train, history_size= 2):
 def train_model(model, X_train, y_train):
     '''function that trains the model'''
 
-    #es = EarlyStopping(patience = 20, restore_best_weights= True)
+    es = EarlyStopping(patience = 100, restore_best_weights= True)
 
     model.fit(X_train,
             y_train,
             validation_split= 0.2,
-            epochs = 500,
+            epochs = 1000,
             batch_size= 32,
-            #callbacks= [es],
+            callbacks= [es],
             verbose= 1)
 
-    print("trained model")
     return model
 
 def evaluate_model(model, scaler, X_test, y_test):
@@ -120,7 +133,7 @@ def evaluate_model(model, scaler, X_test, y_test):
     predicted_stock_price = inverse_transformer(model.predict(X_test), scaler)
 
     # inverse log transforming the date
-    l_stock_price = np.exp(real_stock_price)
+    real_stock_price = np.exp(real_stock_price)
     predicted_stock_price = np.exp(predicted_stock_price)
 
     # evaluating model performance
@@ -129,20 +142,63 @@ def evaluate_model(model, scaler, X_test, y_test):
     print(f"RMSE = {rmse}")
 
 
+def upload_model_to_gcp():
+
+    client = storage.Client()
+
+    bucket = client.bucket(BUCKET_NAME)
+
+    blob = bucket.blob(STORAGE_LOCATION + 'model_architecture.json')
+    blob.upload_from_filename('model_architecture.json')
+
+    blob = bucket.blob(STORAGE_LOCATION + 'model_weights.h5')
+    blob.upload_from_filename('model_weights.h5')
+
+
+def save_model(model):
+    """method that saves the model into a .joblib file and uploads it on Google Storage /models folder
+    HINTS : use joblib library and google-cloud-storage"""
+
+    # saving the trained model to disk is mandatory to then beeing able to upload it to storage
+    # Implement here
+    # print("test1")
+    # with open('model.pkl', 'wb') as f:
+    #     pickle.dump(model, f)
+    # print("test2")
+
+    json_model = model.to_json()
+    print("json to model worked")
+    open('model_architecture.json', 'w').write(json_model)
+    print("saved json model")
+    # saving weights
+    model.save_weights('model_weights.h5', overwrite=True)
+    print("saved json model weights")
+
+
+
+    # Implement here
+    upload_model_to_gcp()
+    print(f"uploaded model.joblib to gcp cloud storage under \n => {STORAGE_LOCATION}")
+
+
 if __name__ == '__main__':
 
     df = get_data()
-    print("data received")
+    print("\ndata received")
 
     X_train, X_test, y_train, y_test, scaler = preprocess(df)
-    print("data preprocessed")
+    print("\ndata preprocessed")
+
+    # make_keras_picklable()
 
     model = compile_model(X_train)
-    print("model compiled")
+    print("\nmodel compiled")
 
     model = train_model(model, X_train, y_train)
-    print("training worked")
+    print("\ntraining worked")
 
     evaluate_model(model, scaler, X_test, y_test)
+    print("\nmodel training and evaluation complete")
 
-    print("model training and evaluation complete")
+    #save_model(model)
+    #print("\nmodel uploaded to GCP")
