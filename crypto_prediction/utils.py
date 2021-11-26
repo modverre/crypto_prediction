@@ -1,5 +1,5 @@
 import numpy as np
-from datetime import datetime
+import datetime as datetime
 import pandas as pd
 import joblib
 

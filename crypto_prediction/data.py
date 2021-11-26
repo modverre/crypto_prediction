@@ -7,7 +7,9 @@ from utils import *
 
 
 # if you try to fetch less than them: dont
-MIN_COIN_HISTORY_DATAPOINTS = 200
+# used to be 80 but then get trouble with the short dates for the prediction
+# also its just a hack
+MIN_COIN_HISTORY_DATAPOINTS = 80
 
 
 def one_coin_financial_history(gecko_id, vs_currency, start_date, end_date, interval='1d'):
@@ -93,8 +95,8 @@ def googletrend_history(namelist, start_date, end_date, interval = '1d'):
         dataframe       - with every name in the namelist as columns and the date as index
     """
     # transform UTC-timestring to datetime-object
-    start_dt = datetime.strptime(start_date, "%Y-%m-%dT%H:%M:%SZ")
-    end_dt = datetime.strptime(end_date, "%Y-%m-%dT%H:%M:%SZ")
+    start_dt = datetime.datetime.strptime(start_date, "%Y-%m-%dT%H:%M:%SZ")
+    end_dt = datetime.datetime.strptime(end_date, "%Y-%m-%dT%H:%M:%SZ")
 
     # setup the engine
     pytrends = TrendReq(hl='en-US', tz=0)  # 0 = UCT, 60 = CET
@@ -136,6 +138,7 @@ def googletrend_history(namelist, start_date, end_date, interval = '1d'):
 
     if interval == '1d':
         daily_df = df.groupby(pd.Grouper(freq='d')).mean()
+        daily_df = pd.DataFrame(daily_df)
         return daily_df
     return df
 
