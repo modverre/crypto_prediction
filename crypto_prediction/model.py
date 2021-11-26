@@ -159,13 +159,6 @@ def save_model(model):
     """method that saves the model into a .joblib file and uploads it on Google Storage /models folder
     HINTS : use joblib library and google-cloud-storage"""
 
-    # saving the trained model to disk is mandatory to then beeing able to upload it to storage
-    # Implement here
-    # print("test1")
-    # with open('model.pkl', 'wb') as f:
-    #     pickle.dump(model, f)
-    # print("test2")
-
     json_model = model.to_json()
     print("json to model worked")
     open('model_architecture.json', 'w').write(json_model)
@@ -200,5 +193,5 @@ if __name__ == '__main__':
     evaluate_model(model, scaler, X_test, y_test)
     print("\nmodel training and evaluation complete")
 
-    #save_model(model)
-    #print("\nmodel uploaded to GCP")
+    save_model(model)
+    print("\nmodel uploaded to GCP")

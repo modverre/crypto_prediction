@@ -45,7 +45,7 @@ def preprocess_prediction(df):
 
     dataset_scaled = dataset_scaled.reshape(1,dataset_scaled.shape[0],dataset_scaled.shape[1])
 
-    return dataset_scaled, scaler
+    return dataset_scaled
 
 def inverse_scale_prediction(pred):
 

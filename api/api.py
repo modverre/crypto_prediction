@@ -41,25 +41,17 @@ def get_coin_history(coin, start_date, end_date, interval='1d'):
 @app.get("/predict")
 def get_prediction(coin_name):
 
-    # here the api-calls have to be made to get historical price data
-    # and google_trends data for the past 2 days, stored as a dataframe
-
     df = prediction_ready_df(coin_name)
-    print(df)
 
     model = download_model()
-    print(model)
 
     df_pred = preprocess_prediction(df)
-    print(df_pred)
 
     pred = model.predict(df_pred)
-    print(pred)
 
     prediction = inverse_scale_prediction(pred)
-    print(prediction)
 
-    return "200"
+    return prediction[0]
 
 
 
