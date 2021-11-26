@@ -1,3 +1,4 @@
+from inspect import _ParameterKind
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 import pandas as pd
@@ -44,20 +45,26 @@ def get_prediction(coin_name):
     # and google_trends data for the past 2 days, stored as a dataframe
 
     df = prediction_ready_df(coin_name)
+    print(df)
 
     model = download_model()
+    print(model)
 
     df_pred = preprocess_prediction(df)
+    print(df_pred)
 
     pred = model.predict(df_pred)
+    print(pred)
 
-    prediction = inverse_scale_prediction(pred)[0][0]
+    prediction = inverse_scale_prediction(pred)
+    print(prediction)
 
-    return prediction
+    return "200"
 
 
 
 if __name__ == '__main__':
-    #df = prediction_ready_df('doge')
-    #print(df)
-    pass
+
+    pred = get_prediction('doge')
+
+    print(pred)
