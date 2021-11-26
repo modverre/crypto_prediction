@@ -1,8 +1,7 @@
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
-import pickle
-import tempfile
+import joblib
 
 from tensorflow.keras.models import Sequential, load_model, save_model, Model, model_from_json
 from tensorflow.keras.layers import Dense, LSTM, Dropout
@@ -63,11 +62,12 @@ def preprocess(df):
     dataset = df.values
 
     # scaling the data
-    dataset_scaled = scaler.fit_transform(dataset)
+    vectorizer = scaler.fit(dataset)
+    dataset_scaled = vectorizer.transform(dataset)
 
     # splitting into train and test data
     split = int(dataset.shape[0]*0.8)
-    train, test = dataset[:split], dataset[split:]
+    train, test = dataset_scaled[:split], dataset_scaled[split:]
 
     # selecting nr. of days used to predict next value
     history_size = 2
@@ -80,6 +80,9 @@ def preprocess(df):
     # reshaping X_train and X_test
     X_train = X_train.reshape((X_train.shape[0], X_train.shape[1],2))
     X_test = X_test.reshape((X_test.shape[0], X_test.shape[1],2))
+
+    joblib.dump(vectorizer, open('scaler.joblib', 'wb'))
+    print("scaler saved")
 
     return X_train, X_test, y_train, y_test, scaler
 

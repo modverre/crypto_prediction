@@ -1,6 +1,9 @@
 import numpy as np
 from datetime import datetime
 import pandas as pd
+import joblib
+
+from sklearn.preprocessing import MinMaxScaler
 
 def get_X_y(history_size, dataset):
     '''function that splits train / test sets in X and y'''
@@ -24,6 +27,35 @@ def inverse_transformer(y, scaler):
     y= y[:,0]
 
     return y
+
+def preprocess_prediction(df):
+    """method that pre-process the data for prediction"""
+
+    # log transforming the data
+    df["high"] = np.log(df["high"])
+
+    # instantiating the scaler
+    scaler = joblib.load('scaler.joblib')
+
+    # selecting relevant column from df
+    dataset = df.values
+
+    # scaling the data
+    dataset_scaled = scaler.transform(dataset)
+
+    dataset_scaled = dataset_scaled.reshape(1,dataset_scaled.shape[0],dataset_scaled.shape[1])
+
+    return dataset_scaled, scaler
+
+def inverse_scale_prediction(pred):
+
+    scaler = joblib.load('scaler.joblib')
+
+    pred = inverse_transformer(pred, scaler)
+
+    pred = np.exp(pred)
+
+    return pred
 
 
 def date2utc_ts(date):
