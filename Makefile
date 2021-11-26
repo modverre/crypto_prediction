@@ -119,5 +119,9 @@ docker_2test:
 docker_3push:
 	docker push eu.gcr.io/$(GCLOUD_PROJECT_ID)/$(DOCKER_IMAGE_NAME)
 
+# if changing projects:
+# do
+# gcloud config set project PROJECT_ID
+# locally first
 docker_4deploy:
 	gcloud run deploy --image eu.gcr.io/$(GCLOUD_PROJECT_ID)/$(DOCKER_IMAGE_NAME) --platform managed --region europe-west1
