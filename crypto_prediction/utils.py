@@ -2,6 +2,7 @@ import numpy as np
 import datetime as datetime
 import pandas as pd
 import joblib
+import os
 
 from sklearn.preprocessing import MinMaxScaler
 
@@ -30,12 +31,11 @@ def inverse_transformer(y, scaler):
 
 def preprocess_prediction(df):
     """method that pre-process the data for prediction"""
-
     # log transforming the data
     df["high"] = np.log(df["high"])
 
     # instantiating the scaler
-    scaler = joblib.load('scaler.joblib')
+    scaler = joblib.load('crypto_prediction/scaler.joblib')
 
     # selecting relevant column from df
     dataset = df.values
@@ -49,7 +49,7 @@ def preprocess_prediction(df):
 
 def inverse_scale_prediction(pred):
 
-    scaler = joblib.load('scaler.joblib')
+    scaler = joblib.load('crypto_prediction/scaler.joblib')
 
     pred = inverse_transformer(pred, scaler)
 

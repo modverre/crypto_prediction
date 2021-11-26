@@ -51,7 +51,8 @@ def get_prediction(coin_name):
 
     prediction = inverse_scale_prediction(pred)
 
-    return prediction[0]
+    return {'prediction':prediction[0]}
+
 
 
 
