@@ -44,25 +44,14 @@ def get_prediction(coin_name):
     # and google_trends data for the past 2 days, stored as a dataframe
 
     df = prediction_ready_df(coin_name)
-    print('************************++')
-    print(df)
-    print(df.shape)
-
 
     model = download_model()
 
     df_pred = preprocess_prediction(df)
 
-    print('************************++++++++++++++')
-    print(df_pred)
-    print(df_pred.shape)
-
     pred = model.predict(df_pred)
 
     prediction = inverse_scale_prediction(pred)
-
-    print('xxxxxxxxxxxxxxxx')
-    print(prediction)
 
     return {'prediction':prediction[0]}
 
