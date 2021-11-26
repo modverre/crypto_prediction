@@ -1,8 +1,6 @@
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
-import pickle
-import tempfile
 
 from tensorflow.keras.models import Sequential, load_model, save_model, Model, model_from_json
 from tensorflow.keras.layers import Dense, LSTM, Dropout
