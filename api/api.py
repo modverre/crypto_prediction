@@ -1,3 +1,4 @@
+from inspect import _ParameterKind
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 import pandas as pd
@@ -40,9 +41,6 @@ def get_coin_history(coin, start_date, end_date, interval='1d'):
 @app.get("/predict")
 def get_prediction(coin_name):
 
-    # here the api-calls have to be made to get historical price data
-    # and google_trends data for the past 2 days, stored as a dataframe
-
     df = prediction_ready_df(coin_name)
 
     model = download_model()
@@ -57,7 +55,9 @@ def get_prediction(coin_name):
 
 
 
+
 if __name__ == '__main__':
-    #df = prediction_ready_df('doge')
-    #print(df)
-    pass
+
+    pred = get_prediction('doge')
+
+    print(pred)
