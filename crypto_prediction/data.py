@@ -236,3 +236,4 @@ if __name__ == "__main__":
 
     #df = googletrend_history(['dogecoin'], '2021-11-23T00:00:00Z', '2021-11-24T00:00:00Z')
     #print(df)
+    pass
