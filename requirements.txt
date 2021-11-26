@@ -27,7 +27,6 @@ fastapi
 uvicorn
 google
 
-
 # utilities
 six>=1.14
 memoized-property
