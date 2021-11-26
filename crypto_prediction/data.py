@@ -29,7 +29,7 @@ COIN_TRANSLATION_TABLE = {
 MIN_COIN_HISTORY_DATAPOINTS = 80
 
 
-def one_coin_financial_history(gecko_id, vs_currency, start_date, end_date, interval='1d'):
+def one_coin_financial_history(gecko_id, vs_currency, start_date, end_date):
     """
     input:
         data for a single coin
@@ -179,8 +179,7 @@ def prediction_ready_df(coin_name):
     name_gecko = COIN_TRANSLATION_TABLE[coin_name]['coingecko']
     coin_raw = coinlist_financial_history([name_gecko],
                                           start_date_hack,
-                                          end_date,
-                                          interval='1d')
+                                          end_date)
 
     # get and translate the coin-df into prediction-ready df
     df = coin_raw[name_gecko]
