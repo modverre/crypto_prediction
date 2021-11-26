@@ -200,8 +200,35 @@ def prediction_ready_df(coin_name):
 
     return df
 
+
+def hourly_coin_static_csv(gecko_id, start_date, end_date, write=False):
+    # if zeit between heute und end date > 90 --> keine hourly mehr
+    vs_currency = 'eur'
+    from_timestamp = date2utc_ts(start_date)
+    to_timestamp = date2utc_ts(end_date)
+
+    cg = CoinGeckoAPI()
+    gecko_raw = cg.get_coin_market_chart_range_by_id(id=gecko_id,
+                                                vs_currency=vs_currency,
+                                                from_timestamp=from_timestamp,
+                                                to_timestamp=to_timestamp
+                                                )
+    df = gecko_make_df(gecko_raw)
+    print('df, have a look')
+    print(df)
+
+    if write:
+        fn = f'{gecko_id}_history_1h_{start_date}---{end_date}.csv'
+        print('save csv as ',fn)
+        df.to_csv(fn)
+
 if __name__ == "__main__":
-    pass
+    # ------------------- just for quick csv-saves -------------------
+    #hourly_coin_static_csv('samoyedcoin', '2021-08-28T00:00:00Z', '2021-11-26T00:00:00Z', write=True)
+    #df = googletrend_history(['dogecoin', 'samoyedcoin'], '2021-08-28T00:00:00Z', '2021-11-26T00:00:00Z', interval='1h')
+    #print(df)
+    # ----------------------------------------------------------------
+
     # quick tests:
     #df = coinlist_financial_history(['samoyedcoin', 'dogecoin'], '2020-11-24T00:00:00Z', '2021-11-24T00:00:00Z')
     #print(df)
