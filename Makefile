@@ -119,9 +119,15 @@ docker_2test:
 docker_3push:
 	docker push eu.gcr.io/$(GCLOUD_PROJECT_ID)/$(DOCKER_IMAGE_NAME)
 
-# if changing projects:
-# do
-# gcloud config set project PROJECT_ID
+# if changing projects, do
+# >>> gcloud config set project PROJECT_ID
 # locally first
+
+# adding credentials, following https://kitt.lewagon.com/camps/735/challenges?path=07-Data-Engineering%2F04-Predict-in-production%2F03-GCR-cloud-run
+# (end of page)
 docker_4deploy:
-	gcloud run deploy --image eu.gcr.io/$(GCLOUD_PROJECT_ID)/$(DOCKER_IMAGE_NAME) --platform managed --region europe-west1
+	gcloud run deploy \
+		--image eu.gcr.io/$(GCLOUD_PROJECT_ID)/$(DOCKER_IMAGE_NAME) \
+		--platform managed \
+		--region europe-west1 \
+		--set-env-vars "GOOGLE_APPLICATION_CREDENTIALS=/credentials.json"
