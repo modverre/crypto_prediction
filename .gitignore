@@ -6,3 +6,4 @@ raw_data/
 *.csv
 **/__pycache__/
 .env
+crypto-prediction-333213-e8032c892bb2.json

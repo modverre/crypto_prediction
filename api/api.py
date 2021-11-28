@@ -6,9 +6,9 @@ import pandas as pd
 from crypto_prediction.utils import preprocess_prediction, inverse_scale_prediction
 from crypto_prediction.gcp import download_model
 
-from crypto_prediction.data import prediction_ready_df
+from crypto_prediction.data import prediction_ready_df, coin_history
 
-from crypto_prediction.utils import date2utc_ts, gecko_make_df
+#from crypto_prediction.utils import date2utc_ts, gecko_make_df
 
 #from datetime import datetime
 #import pytz
@@ -34,14 +34,27 @@ def index():
 def pingpong():
     return 'pong'
 
-@app.get("/get_coin_history")
-def get_coin_history(coin, start_date, end_date, interval='1d'):
-    return('not active')
+@app.get("/get/coin_history")
+def get_coin_history(tickerlist, hoursback):
+    """
+    input:
+        tickerlist      - ticker names seperated by comma: samo,doge,shib ..
+        hoursback       - how many hours to look back (could take dates, too, not yet connected)
+
+    output:
+        dict
+    """
+    # we should sanitize here since its unknown input
+    # ...
+
+    tickerlist = tickerlist.split(',')
+
+    return coin_history(tickerlist, int(hoursback))
 
 @app.get("/predict")
-def get_prediction(coin_name):
+def get_prediction(ticker_name):
 
-    df = prediction_ready_df(coin_name)
+    df = prediction_ready_df(ticker_name, model_history_size = 2)
 
     model = download_model()
 
@@ -58,6 +71,7 @@ def get_prediction(coin_name):
 
 if __name__ == '__main__':
 
-    pred = get_prediction('doge')
+    #pred = get_prediction('doge')
+    #print(pred)
 
-    print(pred)
+    df = prediction_ready_df('doge', 2)
