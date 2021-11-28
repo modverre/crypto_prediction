@@ -20,7 +20,7 @@ COIN_TRANSLATION_TABLE = {
     },
     'samo': {
         'trend': 'samoyedcoin',
-        'id_coingecko': 'samoyecdoin',
+        'id_coingecko': 'samoyedcoin',
         'display': 'Samoyed'
     }
 }
@@ -39,17 +39,13 @@ def _one_coin_financial_history(gecko_id, vs_currency, start_dt, end_dt):
     start_ts = int(start_dt.timestamp())
     end_ts = int(end_dt.timestamp())
 
-    try:
-        cg = CoinGeckoAPI()
-        gecko_raw = cg.get_coin_market_chart_range_by_id(id=gecko_id,
+    cg = CoinGeckoAPI()
+    gecko_raw = cg.get_coin_market_chart_range_by_id(id=gecko_id,
                                                 vs_currency=vs_currency,
                                                 from_timestamp=start_ts,
                                                 to_timestamp=end_ts
                                                 )
-        return gecko_raw
-    except:
-        return 'couldnt get data from the coingecko-call, debug me'
-
+    return gecko_raw
 
 def coin_history(tickerlist, start, end = 'now'):
     """
@@ -57,10 +53,10 @@ def coin_history(tickerlist, start, end = 'now'):
 
     input:
         tickerlist      - list of ticker names, will be translated to coingecko
-        start           - 2021-12-30T13:12:00Z (utc) OR integer as days from end
+        start           - 2021-12-30T13:12:00Z (utc) OR integer as HOURS (aka cycles) from end
         end             - 2021-12-30T13:12:00Z (utc) OR default (now)
 
-        throws an error if start - end is < or > 90 days from the time of the query(!), because:
+        throws an error if start - end is < 0 (wrong time) or > 90 days from the time of the query(!), because:
                             CoinGecko Data granularity is automatic (cannot be adjusted)
                             1 day from query time = 5 minute interval data (has to be fitted to 1 hour)
                             1 - 90 days from query time = hourly data
@@ -79,12 +75,14 @@ def coin_history(tickerlist, start, end = 'now'):
         end_dt = datetime.datetime.strptime(end, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=datetime.timezone.utc)
 
     if isinstance(start, int):
-        start_dt =  end_dt - datetime.timedelta(days=start) # start is integer, start days before end-date
+        # start is integer, start hours (not days) before end-date
+        start_dt =  end_dt - datetime.timedelta(days=start/24)
     else:
+        # start is a normal date
         start_dt = datetime.datetime.strptime(start, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=datetime.timezone.utc)
 
-    # tests to check the < 0 and > 90 day rule
-    diff_days = (end_dt - start_dt).days + 1
+    # tests to check the < 0 and > 90 day rule, start to NOW, not end
+    diff_days = (now_dt - start_dt).days + 1
     assert diff_days >=  0, str(diff_days) + ' days for days of data grabbing at coingecko too short (0..90) allowed'
     assert diff_days <= 90, str(diff_days) + ' days for days of data grabbing at coingecko too long (0..90) allowed'
 
@@ -103,7 +101,7 @@ def coin_history(tickerlist, start, end = 'now'):
 
         assert isinstance(df_coin_data, pd.DataFrame), '_one_coin_financial_history() did not return a dataframe (but it should)'
 
-        coins_dict[gecko_id] = df_coin_data
+        coins_dict[ticker] = df_coin_data
 
         # coingecko has 50 calls / minute max, so if we have to many coins, sleep a while inbetween
         if len(tickerlist) > 20: sleep(1)
@@ -114,14 +112,14 @@ def coin_history(tickerlist, start, end = 'now'):
 
 
 
-def googletrend_history(namelist, start_date, end_date, interval = '1h'):
+def googletrend_history(namelist, start_date, end_date):
     """
-    gets the trend-data, daily or hourly
+    gets the hourly trend-data
+
     input:
         namelist        - list of coin names, they will be translated to their (atm: single) searchterm
         start_date      - 2021-12-30T13:12:00Z (utc format)
         end_date        - 2021-12-30T13:12:00Z (utc format)
-        interval        - granularity, 1d or 1h
     output:
         dataframe       - with every name in the namelist as columns and the date as index
     """
@@ -145,7 +143,7 @@ def googletrend_history(namelist, start_date, end_date, interval = '1h'):
                                              day_end=end_dt.day,
                                              hour_end=end_dt.hour,
                                              cat=0,
-                                             sleep=0))
+                                             sleep=1))
 
     df = data[0].iloc[:, 0]
 
@@ -167,44 +165,32 @@ def googletrend_history(namelist, start_date, end_date, interval = '1h'):
     #how to get in other function?
     #last_timestamp = df.index[-1]
 
-    if interval == '1d':
-        daily_df = df.groupby(pd.Grouper(freq='d')).mean()
-        daily_df = pd.DataFrame(daily_df)
-        return daily_df
     return df
 
-def prediction_ready_df(ticker_name, model_history_size = 2):
+def prediction_ready_df(tickerlist, model_history_size = 2):
     """
-    gets the last model_history_size dates from trends and prices
+    gets the last model_history_size dates from trends and prices and fits it in a neat df
     """
+
+    # the end is now!
     end_dt = datetime.datetime.now(datetime.timezone.utc)
     end_ts = int(end_dt.timestamp())
-    print('end ts', end_ts)
-    end_dt = datetime.datetime.fromtimestamp(end_ts, tz=pytz.utc)
+    # make the end_dt aware of its timezome (utc) if not happened yet (not needed, should be already)
+    # end_dt = datetime.datetime.fromtimestamp(end_ts, tz=pytz.utc)
 
     start_ts = end_ts - model_history_size * 3600 # 60 sek * 60 min
-    print('sta_ts', start_ts)
     start_dt = datetime.datetime.fromtimestamp(start_ts, tz=pytz.utc)
 
-    print('start',start_dt)
-    print('ende ',end_dt)
+    # get all coins by ticker from now minus model_history_size
+    coins_dict = coin_history(tickerlist, model_history_size)
 
-    #probleeeeem.. wenn ich die letzten <24h holen will.. liefert gecko minütlich -_- .. das muss ich runterrechnen?
-
-    assert 1 == 0
-    # get a single coint via the multiple coin-getter
-    name_gecko = COIN_TRANSLATION_TABLE[coin_name]['coingecko']
-    coin_raw = coinlist_financial_history([name_gecko],
-                                          start_date_hack,
-                                          end_date)
+    assert 1==0, 'we need to talk further about the data structure'
 
     # get and translate the coin-df into prediction-ready df
     df = coin_raw[name_gecko]
     df = df.tail(MODEL_HISTORY_SIZE)
     df.rename(columns={'price': 'high'}, inplace=True)
-    df.drop(['timestamp', 'market_caps', 'total_volumes'],
-            axis=1,
-            inplace=True)
+    df.drop(['timestamp', 'market_caps', 'total_volumes'], axis=1, inplace=True)
 
     # get and translate the trends-df into prediction-ready df
     name_trend = COIN_TRANSLATION_TABLE[coin_name]['trend']
@@ -220,17 +206,16 @@ def prediction_ready_df(ticker_name, model_history_size = 2):
 if __name__ == "__main__":
     # ------------------- just for quick csv-saves -------------------
     #_hourly_coin_static_csv('samoyedcoin', '2021-08-28T00:00:00Z', '2021-11-26T00:00:00Z', write=True)
-    #df = googletrend_history(['dogecoin', 'samoyedcoin'], '2021-08-28T00:00:00Z', '2021-11-26T00:00:00Z', interval='1h')
+    #df = googletrend_history(['dogecoin', 'samoyedcoin'], '2021-11-20T00:00:00Z', '2021-11-26T00:00:00Z')
+    #print(df)
     #print(df)
     # ----------------------------------------------------------------
 
     # quick tests:
-    #df = coinlist_financial_history(['samoyedcoin', 'dogecoin'], '2020-11-24T00:00:00Z', '2021-11-24T00:00:00Z')
-    #print(df)
-    #print(len(df))
 
     #df = googletrend_history(['dogecoin'], '2021-11-23T00:00:00Z', '2021-11-24T00:00:00Z')
     #print(df)
 
-    print(coin_history(['doge'], '2021-10-28T08:00:00Z'))
+    #print(coin_history(['doge'], '2021-10-28T08:00:00Z'))
+    print(prediction_ready_df(['samo']), 2)
     pass
