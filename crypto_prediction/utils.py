@@ -2,6 +2,7 @@ import numpy as np
 import datetime as datetime
 import pandas as pd
 import joblib
+import os
 
 from sklearn.preprocessing import MinMaxScaler
 
@@ -30,12 +31,11 @@ def inverse_transformer(y, scaler):
 
 def preprocess_prediction(df):
     """method that pre-process the data for prediction"""
-
     # log transforming the data
     df["high"] = np.log(df["high"])
 
     # instantiating the scaler
-    scaler = joblib.load('scaler.joblib')
+    scaler = joblib.load('crypto_prediction/scaler.joblib')
 
     # selecting relevant column from df
     dataset = df.values
@@ -45,11 +45,11 @@ def preprocess_prediction(df):
 
     dataset_scaled = dataset_scaled.reshape(1,dataset_scaled.shape[0],dataset_scaled.shape[1])
 
-    return dataset_scaled, scaler
+    return dataset_scaled
 
 def inverse_scale_prediction(pred):
 
-    scaler = joblib.load('scaler.joblib')
+    scaler = joblib.load('crypto_prediction/scaler.joblib')
 
     pred = inverse_transformer(pred, scaler)
 
@@ -66,16 +66,29 @@ def date2utc_ts(date):
 
 def gecko_make_df(raw):
     """
-    puts the weird list from coingecko into a neat dataframe
-    output:
-        dataframe - datetime(index), prices, market caps, total_volumes
-    """
+    transforms the weird list from coingecko into a neat dataframe we all cherish
+    input:
+        hourly, smaller values are mean'ed to the full hour
 
+    output:
+        dataframe - datetime(index), timestamp, price, market_caps, total_volumes
+    """
+    # make the 'normal' dataframe
     df = pd.DataFrame(raw['prices'], columns=['timestamp', 'price'])
     df2 = pd.DataFrame(raw['market_caps'], columns=['ts', 'market_caps'])
     df3 = pd.DataFrame(raw['total_volumes'], columns=['ts', 'total_volumes'])
     df['market_caps'] = df2['market_caps']
     df['total_volumes'] = df3['total_volumes']
-    df['datetime'] = pd.to_datetime(df['timestamp'], unit='ms')
-    df = df.set_index('datetime')
+    df['datetime_original'] = pd.to_datetime(df['timestamp'], unit='ms')
+
+    # set the minutes and less to zero, 2021-10-28 08:03:46.436 becomes 2021-10-28 08:00:00
+    df['datetime'] = df['datetime_original'].apply(lambda x: x.replace(minute=0, second=0, microsecond=0))
+
+    # set the new index to be able to group the data
+    df = df.set_index('datetime') # works even with same values as datetime
+
+    # group hourly and take the mean - if only 1 value per hour its fine already
+    df = df.groupby(pd.Grouper(freq='H')).mean()
+    df = pd.DataFrame(df)
+
     return df
