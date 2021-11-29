@@ -189,15 +189,6 @@ def prediction_ready_df(tickerlist, model_history_size = 2):
         list of dataframes      - [price_(tickername)] [trend_(tickername)], index datetime
     """
 
-    # the end is now!
-    end_dt = datetime.datetime.now(datetime.timezone.utc)
-    end_ts = int(end_dt.timestamp())
-    # make the end_dt aware of its timezome (utc) if not happened yet (not needed, should be already)
-    # end_dt = datetime.datetime.fromtimestamp(end_ts, tz=pytz.utc)
-
-    start_ts = end_ts - model_history_size * 3600 # 60 sek * 60 min
-    start_dt = datetime.datetime.fromtimestamp(start_ts, tz=pytz.utc)
-
     # get all coins prices by ticker from now minus model_history_size
     coins_dict = coin_history(tickerlist, model_history_size)
 
