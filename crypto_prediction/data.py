@@ -279,5 +279,4 @@ if __name__ == "__main__":
 
     #print(coin_history(['doge'], '2021-10-28T08:00:00Z'))
     #print(prediction_ready_df(['doge','shib','elon','samo','hoge','mona','dogedash','erc20','ban','cummies','doggy','smi','doe','pepecash','wow','dinu','yummy','shibx','lowb','grlc'], 2160))
-    #print(prediction_ready_df(['doge'], 10))
     pass
