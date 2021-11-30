@@ -149,7 +149,7 @@ def googletrend_history(tickerlist, start, end = 'now'):
                                              day_end=end_dt.day,
                                              hour_end=end_dt.hour,
                                              cat=0,
-                                             sleep=1))
+                                             sleep=5))
 
     df = data[0].iloc[:, 0]
 
@@ -161,10 +161,11 @@ def googletrend_history(tickerlist, start, end = 'now'):
                           how='outer',
                           on='date')
 
+    df = pd.DataFrame(df)
     # make renaming dict
     renaming_dict = {}  # {'old_col1':'new_col1', 'old_col2':'new_col2', ...}
     for ticker in tickerlist:
-        renaming_dict[COIN_TRANSLATION_TABLE[ticker]['trend']] = ticker
+       renaming_dict[COIN_TRANSLATION_TABLE[ticker]['trend']] = ticker
     # use renaming dict
     df.rename(columns = renaming_dict, inplace = True)
 
@@ -198,10 +199,14 @@ def prediction_ready_df(tickerlist, model_history_size = 2):
     # loop over each coin
     predict_me = []
     for ticker in tickerlist:
-        df = coins_dict[ticker][['price']]
-        df.rename(columns = {'price':'price_'+ticker}, inplace = True)
-        df['trend_'+ticker] = trends_df[ticker]
-        df.rename(columns = {'price':'price_'+ticker}, inplace = True)
+        # drop columns from prices and make df
+        df = coins_dict[ticker].drop(columns=['timestamp','market_caps','total_volumes'])
+        # merge part of the trends into price-df
+        df = pd.merge(df, trends_df[ticker], how='left', left_index=True, right_index=True)
+        # fill nans with -1 in the trend-column if some left from merging
+        df[ticker].fillna(-1,inplace=True)
+        # rename columns
+        df.rename(columns = {'price':'price_'+ticker, ticker:'trend_'+ticker}, inplace = True)
         predict_me.append(df)
 
     return predict_me
@@ -221,5 +226,6 @@ if __name__ == "__main__":
     #print(df)
 
     #print(coin_history(['doge'], '2021-10-28T08:00:00Z'))
-    print(prediction_ready_df(['samo', 'yummy', 'grlc'], 2))
+    #print(prediction_ready_df(['doge','shib','elon','samo','hoge','mona','dogedash','erc20','ban','cummies','doggy','smi','doe','pepecash','wow','dinu','yummy','shibx','lowb','grlc'], 2160))
+    #print(prediction_ready_df(['doge'], 10))
     pass
