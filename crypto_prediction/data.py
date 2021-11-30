@@ -6,24 +6,7 @@ from time import sleep
 from pytrends.request import TrendReq
 from crypto_prediction.utils import date2utc_ts, gecko_make_df
 import pytz
-
-COIN_TRANSLATION_TABLE = {
-    'doge': { # danger: != Binance-Peg Dogecoin (DOGE)
-        'trend': 'dogecoin',
-        'id_coingecko': 'dogecoin',
-        'display': 'Doge'
-    },
-    'shib': {
-        'trend': 'shiba-inu coin',
-        'id_coingecko': 'shiba-inu',
-        'display': 'Shiba-Inu'
-    },
-    'samo': {
-        'trend': 'samoyedcoin',
-        'id_coingecko': 'samoyedcoin',
-        'display': 'Samoyed'
-    }
-}
+from crypto_prediction.params import COIN_TRANSLATION_TABLE
 
 def _one_coin_financial_history(gecko_id, vs_currency, start_dt, end_dt):
     """
@@ -76,6 +59,8 @@ def coin_history(tickerlist, start, end = 'now'):
 
     if isinstance(start, int):
         # start is integer, start hours (not days) before end-date
+        if start > 1:
+            start = start - 1
         start_dt =  end_dt - datetime.timedelta(days=start/24)
     else:
         # start is a normal date
@@ -112,28 +97,49 @@ def coin_history(tickerlist, start, end = 'now'):
 
 
 
-def googletrend_history(namelist, start_date, end_date):
+def googletrend_history(tickerlist, start, end = 'now'):
     """
     gets the hourly trend-data
-
     input:
         namelist        - list of coin names, they will be translated to their (atm: single) searchterm
-        start_date      - 2021-12-30T13:12:00Z (utc format)
-        end_date        - 2021-12-30T13:12:00Z (utc format)
+        start           - 2021-12-30T13:12:00Z (utc) OR integer as HOURS (aka cycles) from end
+        end             - 2021-12-30T13:12:00Z (utc) OR default (now)
     output:
         dataframe       - with every name in the namelist as columns and the date as index
     """
+
+    # get the time and date in order
+    now_dt = datetime.datetime.now(datetime.timezone.utc)
+
+    if end == 'now':
+        end_dt = now_dt # default end is now
+    else:
+        end_dt = datetime.datetime.strptime(end, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=datetime.timezone.utc)
+
+    if isinstance(start, int):
+        # start is integer, start hours before end-date
+        if start > 1:
+            start = start - 1
+        start_dt =  end_dt - datetime.timedelta(days=start/24)
+    else:
+        # start is a normal date
+        start_dt = datetime.datetime.strptime(start, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=datetime.timezone.utc)
+
     # transform UTC-timestring to datetime-object
-    start_dt = datetime.datetime.strptime(start_date, "%Y-%m-%dT%H:%M:%SZ")
-    end_dt = datetime.datetime.strptime(end_date, "%Y-%m-%dT%H:%M:%SZ")
+    #start_dt = datetime.datetime.strptime(start_date, "%Y-%m-%dT%H:%M:%SZ")
+    #end_dt = datetime.datetime.strptime(end_date, "%Y-%m-%dT%H:%M:%SZ")
 
     # setup the engine
     pytrends = TrendReq(hl='en-US', tz=0)  # 0 = UCT, 60 = CET
 
     data = []
-    for name in namelist:
+    for ticker in tickerlist:
+        # translate from ticker to trendsearch
+        assert ticker in COIN_TRANSLATION_TABLE, 'tickername ">>>' + ticker + '"<<< not in COIN_TRANSLATION_TABLE, gecko ID not in reach'
+        searchname = COIN_TRANSLATION_TABLE[ticker]['trend']
+
         data.append(
-            pytrends.get_historical_interest([name],
+            pytrends.get_historical_interest([searchname],
                                              year_start=start_dt.year,
                                              month_start=start_dt.month,
                                              day_start=start_dt.day,
@@ -148,12 +154,19 @@ def googletrend_history(namelist, start_date, end_date):
     df = data[0].iloc[:, 0]
 
     # merges all coins into one df
-    if len(namelist) > 1:
-        for i in range(1, len(namelist)):
+    if len(tickerlist) > 1:
+        for i in range(1, len(tickerlist)):
             df = pd.merge(left=df,
                           right=data[i].iloc[:, 0],
                           how='outer',
                           on='date')
+
+    # make renaming dict
+    renaming_dict = {}  # {'old_col1':'new_col1', 'old_col2':'new_col2', ...}
+    for ticker in tickerlist:
+        renaming_dict[COIN_TRANSLATION_TABLE[ticker]['trend']] = ticker
+    # use renaming dict
+    df.rename(columns = renaming_dict, inplace = True)
 
     # non-existing values are replaced by 0.25,
     # (avg of 0 & 0.5, the range of values marked as <1 on GT)
@@ -167,41 +180,31 @@ def googletrend_history(namelist, start_date, end_date):
 
     return df
 
+
 def prediction_ready_df(tickerlist, model_history_size = 2):
     """
     gets the last model_history_size dates from trends and prices and fits it in a neat df
+
+    output:
+        list of dataframes      - [price_(tickername)] [trend_(tickername)], index datetime
     """
 
-    # the end is now!
-    end_dt = datetime.datetime.now(datetime.timezone.utc)
-    end_ts = int(end_dt.timestamp())
-    # make the end_dt aware of its timezome (utc) if not happened yet (not needed, should be already)
-    # end_dt = datetime.datetime.fromtimestamp(end_ts, tz=pytz.utc)
-
-    start_ts = end_ts - model_history_size * 3600 # 60 sek * 60 min
-    start_dt = datetime.datetime.fromtimestamp(start_ts, tz=pytz.utc)
-
-    # get all coins by ticker from now minus model_history_size
+    # get all coins prices by ticker from now minus model_history_size
     coins_dict = coin_history(tickerlist, model_history_size)
 
-    assert 1==0, 'we need to talk further about the data structure'
+    # get the trend data for the coins
+    trends_df = googletrend_history(tickerlist, model_history_size)
 
-    # get and translate the coin-df into prediction-ready df
-    df = coin_raw[name_gecko]
-    df = df.tail(MODEL_HISTORY_SIZE)
-    df.rename(columns={'price': 'high'}, inplace=True)
-    df.drop(['timestamp', 'market_caps', 'total_volumes'], axis=1, inplace=True)
+    # loop over each coin
+    predict_me = []
+    for ticker in tickerlist:
+        df = coins_dict[ticker][['price']]
+        df.rename(columns = {'price':'price_'+ticker}, inplace = True)
+        df['trend_'+ticker] = trends_df[ticker]
+        df.rename(columns = {'price':'price_'+ticker}, inplace = True)
+        predict_me.append(df)
 
-    # get and translate the trends-df into prediction-ready df
-    name_trend = COIN_TRANSLATION_TABLE[coin_name]['trend']
-    df_trend = googletrend_history(
-        [name_trend], start_date, end_date, interval='1d').tail(
-            MODEL_HISTORY_SIZE)  # otherwise gets 3 instead of 2
-
-    # putting together
-    df['Google_trends'] = df_trend[name_trend]
-
-    return df
+    return predict_me
 
 if __name__ == "__main__":
     # ------------------- just for quick csv-saves -------------------
@@ -213,9 +216,10 @@ if __name__ == "__main__":
 
     # quick tests:
 
-    #df = googletrend_history(['dogecoin'], '2021-11-23T00:00:00Z', '2021-11-24T00:00:00Z')
+    #df = googletrend_history(['doge', 'samo'], '2021-11-23T12:00:00Z', '2021-11-24T00:00:00Z')
+    #df = googletrend_history(['doge', 'samo'], 2)
     #print(df)
 
     #print(coin_history(['doge'], '2021-10-28T08:00:00Z'))
-    print(prediction_ready_df(['samo']), 2)
+    print(prediction_ready_df(['samo', 'yummy', 'grlc'], 2))
     pass
