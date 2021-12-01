@@ -92,3 +92,18 @@ def gecko_make_df(raw):
     df = pd.DataFrame(df)
 
     return df
+
+def twitter_make_df(raw):
+    df = pd.DataFrame.from_dict(raw)
+    # drop last hour since its incomplete
+    df = df.iloc[:-1]
+    # 2021-11-30T13:12.164Z to 2021-11-30 13:12
+    df['datetime'] = pd.to_datetime(df['end'], format='%Y-%m-%dT%H:%M:%S.%fZ')
+    # cut 2021-11-30 13:12 to 2021-11-30 13:00
+    df['datetime'] = df['datetime'].apply(lambda x: x.replace(minute=0, second=0, microsecond=0))
+    # set datetime as index
+    df = df.set_index('datetime')
+    # drop the rest
+    df.drop(['start', 'end'], axis=1, inplace=True)
+
+    return df
