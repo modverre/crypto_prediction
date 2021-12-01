@@ -34,8 +34,6 @@ def download_model(bucket=BUCKET_NAME):
 
 def download_prediction_data(list_of_dfs=list_of_dfs):
 
-    dt = datetime.now() - timedelta(hours= 49)
-
     dfs = []
 
     for df in list_of_dfs:
@@ -43,7 +41,7 @@ def download_prediction_data(list_of_dfs=list_of_dfs):
         sql = f"""
         SELECT *
         FROM `crypto-prediction-333213.crypto_BQDB.{df}`
-        WHERE datetime > '{dt}';
+        ORDER BY datetime DESC LIMIT 48;
         """
 
         dfs.append(pd.read_gbq(sql, project_id=project_id, dialect='standard'))
