@@ -5,9 +5,7 @@ import pandas as pd
 
 from crypto_prediction.utils import preprocess_prediction, inverse_scale_prediction
 from crypto_prediction.gcp import download_model
-
 from crypto_prediction.data import prediction_ready_df, coin_history
-
 #from crypto_prediction.utils import date2utc_ts, gecko_make_df
 
 #from datetime import datetime
