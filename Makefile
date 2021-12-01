@@ -131,3 +131,6 @@ docker_4deploy:
 		--platform managed \
 		--region europe-west1 \
 		--set-env-vars "GOOGLE_APPLICATION_CREDENTIALS=/credentials.json"
+
+docker_xlook:
+	docker run -it crypto_v1 sh

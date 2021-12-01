@@ -3,6 +3,7 @@ import datetime as datetime
 import pandas as pd
 import joblib
 import os
+import pandas_gbq
 
 from sklearn.preprocessing import MinMaxScaler
 
@@ -38,7 +39,7 @@ def inverse_transformer(y, scaler):
 
 def reshape_data_for_prediction(data_to_be_predicted):
 
-    scalers = joblib.load('scalers.joblib')
+    scalers = joblib.load('crypto_prediction/scalers.joblib')
 
     X = []
 
@@ -75,7 +76,7 @@ def get_prediction(data_to_be_predicted, model, coins= coins, horizon= horizon):
 
 def reshape_predicted_data(prediction_dataframe, list_of_dfs=list_of_dfs):
 
-    scalers = joblib.load('scalers.joblib')
+    scalers = joblib.load('crypto_prediction/scalers.joblib')
 
     for i in range(0,prediction_dataframe.shape[1]):
 

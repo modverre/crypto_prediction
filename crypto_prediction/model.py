@@ -1,6 +1,5 @@
 import pandas as pd
 import numpy as np
-import matplotlib.pyplot as plt
 import joblib
 
 from tensorflow.keras.models import Sequential, load_model, save_model, Model, model_from_json
