@@ -6,56 +6,116 @@ import os
 
 from sklearn.preprocessing import MinMaxScaler
 
-def get_X_y(history_size, dataset):
-    '''function that splits train / test sets in X and y'''
+horizon = 24
+coins = 19
+list_of_dfs = ["ban", "cummies", "dinu", "doge",
+"doggy", "elon", "erc20", "ftm", "grlc", "hoge",
+"lowb", "mona", "samo", "shib", "shibx", "smi",
+"wow", "yooshi","yummy"]
+
+def get_X_y(history_size, horizon, dataset):
 
     X = []
     y = []
 
-    for i in range(history_size, dataset.shape[0]):
-        X.append(dataset[i-history_size:i,:])
-        y.append(dataset[i,0])
+    for i in range(0, dataset.shape[0]-history_size-horizon):
+        X.append(dataset[i:i+history_size,:])
+        y.append(dataset[i+history_size: i+history_size+horizon,0])
 
     return np.array(X), np.array(y)
 
 
 def inverse_transformer(y, scaler):
-    '''function that takes a one-dimensional input array (y_test or y_hat) and inverse transforms it.'''
-    y = np.c_[y, np.ones(len(y))]
 
-    y = scaler.inverse_transform(y)
+  # inverse scaling
+  y = np.c_[y, 1,1,1,1,1]
+  y = scaler.inverse_transform(y)
+  y= y[:,0]
 
-    y= y[:,0]
+  # inverse log-transforming
+  y = np.exp(y)[0]
+  return y
 
-    return y
+def reshape_data_for_prediction(data_to_be_predicted):
 
-def preprocess_prediction(df):
-    """method that pre-process the data for prediction"""
-    # log transforming the data
-    df["high"] = np.log(df["high"])
+    scalers = joblib.load('scalers.joblib')
 
-    # instantiating the scaler
-    scaler = joblib.load('crypto_prediction/scaler.joblib')
+    X = []
 
-    # selecting relevant column from df
-    dataset = df.values
+    for i in range(0,len(data_to_be_predicted)):
 
-    # scaling the data
-    dataset_scaled = scaler.transform(dataset)
+      df = data_to_be_predicted[i]
+      scaler = scalers[i]
 
-    dataset_scaled = dataset_scaled.reshape(1,dataset_scaled.shape[0],dataset_scaled.shape[1])
+      # log transform
+      price_col = [i for i in df.columns if "price" in i][0]
+      df[price_col] = np.log(df[price_col])
 
-    return dataset_scaled
+      data = df.values
 
-def inverse_scale_prediction(pred):
+      X_arr = scaler.transform(data)
 
-    scaler = joblib.load('crypto_prediction/scaler.joblib')
+      X.append(X_arr)
 
-    pred = inverse_transformer(pred, scaler)
+    # stacking data three-dimensionally
+    X = np.stack(X, axis= 2).reshape(len(X[0]),-1)
 
-    pred = np.exp(pred)
+    X = np.expand_dims(X, axis= 0)
 
-    return pred
+    return X
+
+def get_prediction(data_to_be_predicted, model, coins= coins, horizon= horizon):
+
+    predictions = model.predict(data_to_be_predicted)
+
+    pred_df = pd.DataFrame(predictions.reshape(horizon, coins))
+
+    return pred_df
+
+
+def reshape_predicted_data(prediction_dataframe, list_of_dfs=list_of_dfs):
+
+    scalers = joblib.load('scalers.joblib')
+
+    for i in range(0,prediction_dataframe.shape[1]):
+
+      scaler = scalers[i]
+      prediction_dataframe[i] = prediction_dataframe[i].apply(lambda x: inverse_transformer(x,scaler))
+
+    # renaming columns
+    prediction_dataframe.columns = list_of_dfs
+
+    prediction_dict = prediction_dataframe.to_dict(orient="list")
+
+    return prediction_dict
+
+# def preprocess_prediction(df):
+#     """method that pre-process the data for prediction"""
+#     # log transforming the data
+#     df["high"] = np.log(df["high"])
+
+#     # instantiating the scaler
+#     scaler = joblib.load('crypto_prediction/scaler.joblib')
+
+#     # selecting relevant column from df
+#     dataset = df.values
+
+#     # scaling the data
+#     dataset_scaled = scaler.transform(dataset)
+
+#     dataset_scaled = dataset_scaled.reshape(1,dataset_scaled.shape[0],dataset_scaled.shape[1])
+
+#     return dataset_scaled
+
+# def inverse_scale_prediction(pred):
+
+#     scaler = joblib.load('crypto_prediction/scaler.joblib')
+
+#     pred = inverse_transformer(pred, scaler)
+
+#     pred = np.exp(pred)
+
+#     return pred
 
 
 def date2utc_ts(date):
