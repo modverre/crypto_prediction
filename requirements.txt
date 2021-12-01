@@ -27,6 +27,7 @@ fastapi
 uvicorn
 google
 pycoingecko
+pandas_gbq
 
 # utilities
 six>=1.14
