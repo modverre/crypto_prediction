@@ -3,7 +3,7 @@ import numpy as np
 import joblib
 
 from tensorflow.keras.models import Sequential, load_model, save_model, Model, model_from_json
-from tensorflow.keras.layers import Dense, LSTM, Dropout, Masking
+from tensorflow.keras.layers import Dense, LSTM, Dropout, Masking, GRU
 from tensorflow.keras.callbacks import EarlyStopping
 
 from sklearn.preprocessing import MinMaxScaler, RobustScaler
@@ -119,20 +119,22 @@ def reshape_data(dfs, history_size):
 
 def modeling(coins, horizon):
 
-    # instantiating a model
+    # instantiating the model
     model = Sequential()
 
     # first network layer
     model.add(Masking(mask_value=-99))
-    model.add(LSTM(units = 100, activation= "tanh", return_sequences= True))
+    model.add(GRU(units = 50, activation= "tanh", return_sequences= True))
     model.add(Dropout(0.2))
 
     # network layer's 2 - 5
-    model.add(LSTM(units= 100, activation= "tanh", return_sequences= True))
-    model.add(LSTM(units= 10, activation= "tanh", return_sequences= False))
+    model.add(GRU(units= 50, activation= "tanh", return_sequences= True))
+    model.add(Dropout(0.2))
+    model.add(GRU(units= 25, activation= "tanh", return_sequences= False))
     model.add(Dropout(0.2))
 
     # network output layer
+    # predicting future_horizon = 24 hours
     model.add(Dense(coins*horizon, activation= "linear"))
 
     model.compile(optimizer= "adam", loss= "mse")
@@ -142,7 +144,7 @@ def modeling(coins, horizon):
 def train_model(model, X, y):
     '''function that trains the model'''
 
-    es = EarlyStopping(patience = 50, restore_best_weights= True)
+    es = EarlyStopping(patience = 20, restore_best_weights= True)
 
     print(X.shape)
     print(y.shape)
@@ -150,7 +152,7 @@ def train_model(model, X, y):
     model.fit(X,
             y,
             validation_split= 0.2,
-            epochs = 1,
+            epochs = 100,
             batch_size= 64,
             callbacks= [es],
             verbose= 1)
