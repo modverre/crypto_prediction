@@ -3,18 +3,12 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 import pandas as pd
 
+
 from crypto_prediction.utils import reshape_data_for_prediction, reshape_predicted_data, get_prediction
 from crypto_prediction.gcp import download_model, download_prediction_data
 from crypto_prediction.data import prediction_ready_df, coin_history
 from crypto_prediction.model import data_cleaning
 
-#from crypto_prediction.utils import date2utc_ts, gecko_make_df
-
-#from datetime import datetime
-#import pytz
-#import pandas as pd
-#import joblib
-#from google.cloud import storage
 
 app = FastAPI()
 
