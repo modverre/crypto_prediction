@@ -6,7 +6,7 @@ COPY crypto_prediction/scaler.joblib /crypto_prediction/scaler.joblib
 COPY requirements.txt /requirements.txt
 
 COPY /crypto-prediction-333213-e8032c892bb2.json /credentials.json
-
+COPY .env /.env
 RUN pip install -r requirements.txt
 
 CMD uvicorn api.api:app --host 0.0.0.0 --port $PORT
