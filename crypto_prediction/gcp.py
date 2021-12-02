@@ -1,7 +1,17 @@
 from google.cloud import storage
+import pandas as pd
+#import pandas_gbq
 from tensorflow.keras.models import model_from_json
+from datetime import datetime, timedelta
 
 BUCKET_NAME = "crypto_prediction"
+
+list_of_dfs = ["ban", "cummies", "dinu", "doge",
+"doggy", "elon", "erc20", "ftm", "grlc", "hoge",
+"lowb", "mona", "samo", "shib", "shibx", "smi",
+"wow", "yooshi","yummy"]
+
+project_id = 'crypto-prediction-333213'
 
 
 def download_model(bucket=BUCKET_NAME):
@@ -21,6 +31,23 @@ def download_model(bucket=BUCKET_NAME):
     model.load_weights('model_weights.h5')
 
     return model
+
+def download_prediction_data(list_of_dfs=list_of_dfs):
+
+    dfs = []
+
+    for df in list_of_dfs:
+
+        sql = f"""
+        SELECT *
+        FROM `crypto-prediction-333213.crypto_BQDB.{df}`
+        ORDER BY datetime DESC LIMIT 48;
+        """
+
+        dfs.append(pd.read_gbq(sql, project_id=project_id, dialect='standard'))
+
+    return dfs
+
 
 if __name__ == "__main__":
 

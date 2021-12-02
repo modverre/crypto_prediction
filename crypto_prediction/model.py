@@ -1,17 +1,16 @@
 import pandas as pd
 import numpy as np
-import matplotlib.pyplot as plt
 import joblib
 
 from tensorflow.keras.models import Sequential, load_model, save_model, Model, model_from_json
-from tensorflow.keras.layers import Dense, LSTM, Dropout
+from tensorflow.keras.layers import Dense, LSTM, Dropout, Masking, GRU
 from tensorflow.keras.callbacks import EarlyStopping
 
 from sklearn.preprocessing import MinMaxScaler, RobustScaler
 from sklearn.model_selection import GridSearchCV, RandomizedSearchCV
 from sklearn.metrics import mean_squared_error
 
-from utils import get_X_y, inverse_transformer
+from crypto_prediction.utils import get_X_y, inverse_transformer
 from google.cloud import storage
 
 BUCKET_NAME = 'crypto_prediction'
@@ -24,123 +23,141 @@ MODEL_VERSION = 'v1'
 
 STORAGE_LOCATION = 'models/'
 
+list_of_dfs = ["ban", "cummies", "dinu", "doge",
+"doggy", "elon", "erc20", "ftm", "grlc", "hoge",
+"lowb", "mona", "samo", "shib", "shibx", "smi",
+"wow", "yooshi","yummy"]
+
+project_id = 'crypto-prediction-333213'
+
+horizon = 24
+
+history_size = 48
+
+coins = 19
 
 def get_data():
-    """method to get the training data (or a portion of it) from google cloud bucket"""
 
-    # getting historical price data
-    df = pd.read_csv('./data/doge-hist-2y.csv')
-    df.rename(columns= {"Unnamed: 0": "Date"}, inplace= True)
-    df["Date"] = pd.to_datetime(df["Date"], infer_datetime_format= True)
-    df = df.set_index("Date")
-    df.interpolate(method= "linear", inplace= True)
+    dfs = []
 
-    # getting daily google trends data
-    df2 = pd.read_csv('./data/doge_daily_google_trends_1y.csv')
-    df2["date"] = pd.to_datetime(df2["date"], infer_datetime_format= True)
-    df2 = df2.set_index("date")
-    df2.interpolate(method= "linear", inplace= True)
+    for df in list_of_dfs:
 
-    # joining both dataframes
-    df_final = df[["high"]].join(df2[["Dogecoin"]], how= "outer")
-    df_final.rename(columns={"Dogecoin": "Google_Trends"}, inplace= True)
-    df_final.dropna(inplace= True)
+        sql = f"""
+        SELECT *
+        FROM `crypto-prediction-333213.crypto_BQ.{df}`;
+        """
 
-    return df_final
+        dfs.append(pd.read_gbq(sql, project_id=project_id, dialect='standard'))
+
+    return dfs
+
+def data_cleaning(dfs):
+
+    # takes as input the list of dataframes
+
+    dfs_new = []
+
+    for i in range(0,len(dfs)):
+        df = dfs[i]
+        price_col = [i for i in df.columns if "price" in i][0]
+
+        # data cleaning
+        df = df.sort_values(by="datetime")
+        df = df.drop_duplicates(keep= "last")
+        df = df.set_index("datetime")
+        df[price_col].interpolate(method="linear", inplace= True)
+
+        # adding financial indicators
+        df["hourly_pct_change"] = df[price_col].pct_change(1)
+        df["MA12_hours"] = df[price_col].rolling(window=12).mean()
+        df["MA72_hours"] = df[price_col].rolling(window=72).mean()
+        df["MAshort_over_long"] = df["MA12_hours"] > df["MA72_hours"]
+        df["MAshort_over_long"] = df["MAshort_over_long"].apply(lambda x: 1 if x == True else 0)
+
+        cols = [i for i in df.columns[2:]]
+        for col in cols:
+            df[col] = df[col].fillna(-99)
+
+        dfs_new.append(df)
+
+    return dfs_new
 
 
-def preprocess(df):
-    """method that pre-process the data"""
+def reshape_data(dfs, history_size):
 
-    # log transforming the data
-    df["high"] = np.log(df["high"])
+    # scaling the data & get_X_y for all datasets
+    X = []
+    y = []
+    scalers = []
 
-    # instantiating the scaler
-    scaler = MinMaxScaler()
+    for df in dfs:
 
-    # selecting relevant column from df
-    dataset = df.values
+        # log transform
+        price_col = [i for i in df.columns if "price" in i][0]
+        df[price_col] = np.log(df[price_col])
 
-    # scaling the data
-    vectorizer = scaler.fit(dataset)
-    dataset_scaled = vectorizer.transform(dataset)
+        data = df.values
 
-    # splitting into train and test data
-    split = int(dataset.shape[0]*0.8)
-    train, test = dataset_scaled[:split], dataset_scaled[split:]
+        # scaling
+        scaler = MinMaxScaler()
 
-    # selecting nr. of days used to predict next value
-    history_size = 2
+        scaler.fit(data)
+        data = scaler.transform(data)
 
-    # creating arrays X, y for train and test data
-    X_train, y_train = get_X_y(history_size, train)
+        # get X and y
+        X_arr, y_arr = get_X_y(history_size, horizon, data)
 
-    X_test, y_test = get_X_y(history_size, test)
+        X.append(X_arr)
+        y.append(y_arr)
+        scalers.append(scaler)
 
-    # reshaping X_train and X_test
-    X_train = X_train.reshape((X_train.shape[0], X_train.shape[1],2))
-    X_test = X_test.reshape((X_test.shape[0], X_test.shape[1],2))
+    # stacking data three-dimensionally
+    X = np.stack(X, axis= 2).reshape(len(X[0]),history_size,-1)
+    y = np.stack(y, axis = 2).reshape(len(y[0]),-1)
 
-    joblib.dump(vectorizer, open('scaler.joblib', 'wb'))
-    print("scaler saved")
+    return X, y, scalers
 
-    return X_train, X_test, y_train, y_test, scaler
+def modeling(coins, horizon):
 
-def compile_model(X_train, history_size= 2):
-    '''function that instantiates and compiles the model'''
-
-    # instantiating a model
+    # instantiating the model
     model = Sequential()
 
     # first network layer
-    model.add(LSTM(units = 100, return_sequences= True, input_shape = (history_size, 2)))
+    model.add(Masking(mask_value=-99))
+    model.add(GRU(units = 50, activation= "tanh", return_sequences= True))
     model.add(Dropout(0.2))
 
     # network layer's 2 - 5
-    model.add(LSTM(units= 50, return_sequences= True))
+    model.add(GRU(units= 50, activation= "tanh", return_sequences= True))
     model.add(Dropout(0.2))
-    model.add(LSTM(units= 10, return_sequences= False))
+    model.add(GRU(units= 25, activation= "tanh", return_sequences= False))
     model.add(Dropout(0.2))
 
     # network output layer
-    model.add(Dense(units= 1))
+    # predicting future_horizon = 24 hours
+    model.add(Dense(coins*horizon, activation= "linear"))
 
     model.compile(optimizer= "adam", loss= "mse")
 
     return model
 
-
-def train_model(model, X_train, y_train):
+def train_model(model, X, y):
     '''function that trains the model'''
 
-    es = EarlyStopping(patience = 100, restore_best_weights= True)
+    es = EarlyStopping(patience = 20, restore_best_weights= True)
 
-    model.fit(X_train,
-            y_train,
+    print(X.shape)
+    print(y.shape)
+
+    model.fit(X,
+            y,
             validation_split= 0.2,
-            epochs = 1000,
-            batch_size= 32,
+            epochs = 100,
+            batch_size= 64,
             callbacks= [es],
             verbose= 1)
 
     return model
-
-def evaluate_model(model, scaler, X_test, y_test):
-    '''function that evalutes the model performance'''
-
-    # inverse transforming the data
-    real_stock_price = inverse_transformer(y_test, scaler)
-    predicted_stock_price = inverse_transformer(model.predict(X_test), scaler)
-
-    # inverse log transforming the date
-    real_stock_price = np.exp(real_stock_price)
-    predicted_stock_price = np.exp(predicted_stock_price)
-
-    # evaluating model performance
-    rmse = np.sqrt(mean_squared_error(real_stock_price, predicted_stock_price))
-
-    print(f"RMSE = {rmse}")
-
 
 def upload_model_to_gcp():
 
@@ -176,22 +193,21 @@ def save_model(model):
 
 if __name__ == '__main__':
 
-    df = get_data()
-    print("\ndata received")
+    dfs = get_data()
 
-    X_train, X_test, y_train, y_test, scaler = preprocess(df)
-    print("\ndata preprocessed")
+    dfs = data_cleaning(dfs)
 
-    # make_keras_picklable()
+    X, y, scalers = reshape_data(dfs, history_size)
 
-    model = compile_model(X_train)
+    joblib.dump(scalers, open('scalers.joblib', 'wb'))
+    print("scalers saved")
+
+
+    model = modeling(coins, horizon)
     print("\nmodel compiled")
 
-    model = train_model(model, X_train, y_train)
+    model = train_model(model, X, y)
     print("\ntraining worked")
-
-    evaluate_model(model, scaler, X_test, y_test)
-    print("\nmodel training and evaluation complete")
 
     save_model(model)
     print("\nmodel uploaded to GCP")
