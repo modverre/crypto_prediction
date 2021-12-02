@@ -41,7 +41,7 @@ def download_prediction_data(list_of_dfs=list_of_dfs):
         sql = f"""
         SELECT *
         FROM `crypto-prediction-333213.crypto_BQDB.{df}`
-        ORDER BY datetime DESC LIMIT 10;
+        ORDER BY datetime DESC LIMIT 100;
         """
 
         dfs.append(pd.read_gbq(sql, project_id=project_id, dialect='standard'))

@@ -131,7 +131,7 @@ def coin_history_gbq(tickerlist, start, end = 'now'):
         ORDER BY datetime DESC LIMIT {start};
         """
         df = pd.read_gbq(sql, project_id=PROJECT_ID, dialect='standard')
-        df = df.set_index(datetime)
+        df = df.set_index('datetime')
         coins_dict[ticker] = df
 
     return coins_dict
@@ -261,7 +261,7 @@ def prediction_ready_df(tickerlist, model_history_size = 2):
 
 if __name__ == "__main__":
     test = coin_history_gbq(['samo', 'yummy'], 10)
-    print(test)
+    print(test['samo'])
     # quick tests:
 
     #df = googletrend_history(['doge', 'samo'], '2021-11-23T12:00:00Z', '2021-11-24T00:00:00Z')
