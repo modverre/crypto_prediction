@@ -32,7 +32,7 @@ project_id = 'crypto-prediction-333213'
 
 horizon = 24
 
-history_size = 48
+history_size = 10
 
 coins = 19
 
