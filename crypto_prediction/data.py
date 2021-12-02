@@ -6,7 +6,7 @@ from time import sleep
 from pytrends.request import TrendReq
 from crypto_prediction.utils import gecko_make_df, twitter_make_df
 import pytz
-from crypto_prediction.params import COIN_TRANSLATION_TABLE
+from crypto_prediction.params import COIN_TRANSLATION_TABLE, PROJECT_ID
 import os
 from dotenv import load_dotenv, find_dotenv
 import requests
@@ -102,6 +102,37 @@ def coin_history(tickerlist, start, end = 'now'):
         # coingecko has 50 calls / minute max, so if we have to many coins, sleep a while inbetween
         if len(tickerlist) > 20: sleep(1)
         if len(tickerlist) > 40: sleep(2)
+
+    return coins_dict
+
+
+def coin_history_gbq(tickerlist, start, end = 'now'):
+    """
+    returns historical coin data from the google big query
+
+    input:
+        !!! only the start = int works, the date-part is not implemented yet !!!
+        tickerlist      - list of ticker names, will be translated to coingecko
+        start           - 2021-12-30T13:12:00Z (utc) OR integer as HOURS (aka cycles) from end
+        end             - 2021-12-30T13:12:00Z (utc) OR default (now)
+    output:
+        returns dict of dataframes
+        {ticker: dataframe,
+         ticker: dataframe, ..}
+    """
+
+    start = int(start)
+
+    coins_dict = {}
+    for ticker in tickerlist:
+        sql = f"""
+        SELECT *
+        FROM `crypto-prediction-333213.crypto_BQDB.{ticker}`
+        ORDER BY datetime DESC LIMIT {start};
+        """
+        df = pd.read_gbq(sql, project_id=PROJECT_ID, dialect='standard')
+        df = df.set_index(datetime)
+        coins_dict[ticker] = df
 
     return coins_dict
 
@@ -229,13 +260,8 @@ def prediction_ready_df(tickerlist, model_history_size = 2):
 
 
 if __name__ == "__main__":
-    # ------------------- just for quick csv-saves -------------------
-    #_hourly_coin_static_csv('samoyedcoin', '2021-08-28T00:00:00Z', '2021-11-26T00:00:00Z', write=True)
-    #df = googletrend_history(['dogecoin', 'samoyedcoin'], '2021-11-20T00:00:00Z', '2021-11-26T00:00:00Z')
-    #print(df)
-    #print(df)
-    # ----------------------------------------------------------------
-
+    test = coin_history_gbq(['samo', 'yummy'], 10)
+    print(test)
     # quick tests:
 
     #df = googletrend_history(['doge', 'samo'], '2021-11-23T12:00:00Z', '2021-11-24T00:00:00Z')

@@ -129,8 +129,7 @@ docker_4deploy:
 	gcloud run deploy \
 		--image eu.gcr.io/$(GCLOUD_PROJECT_ID)/$(DOCKER_IMAGE_NAME) \
 		--platform managed \
-		--region europe-west1 \
-		--set-env-vars "GOOGLE_APPLICATION_CREDENTIALS=/credentials.json"
+		--region europe-west1
 
 docker_xlook:
-	docker run -it crypto_v1 sh
+	docker run -it eu.gcr.io/$(GCLOUD_PROJECT_ID)/$(DOCKER_IMAGE_NAME) sh

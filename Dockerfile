@@ -10,5 +10,6 @@ COPY crypto-prediction-333213-e8032c892bb2.json /credentials.json
 COPY .env /.env
 
 RUN pip install -r requirements.txt
+ENV GOOGLE_APPLICATION_CREDENTIALS=credentials.json
 
 CMD uvicorn api.api:app --host 0.0.0.0 --port $PORT
