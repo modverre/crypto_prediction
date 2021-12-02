@@ -114,3 +114,5 @@ COIN_TRANSLATION_TABLE = {
         'display': 'Yummy'
     }
 }
+
+PROJECT_ID = 'crypto-prediction-333213'
